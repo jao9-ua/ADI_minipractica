@@ -1,0 +1,104 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <link rel="stylesheet" href="lista.css"/>
+</head>
+<body>
+    <div id="app">
+       <lista/> 
+    </div>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script type="module">
+        import {ClienteAPI} from './servicios/ClienteAPI.js'
+        
+        const app = Vue.createApp()
+
+        app.component('nuevo-item',{
+            data: function() {
+                return {
+                   nombre: "" 
+                }
+            },
+            template: `
+            <input type="text" v-model="nombre">
+            <button @click="$emit()">Añadir</button>
+            `
+        })
+
+        app.component("lista",{
+            data: function() {
+                return {
+                    items: [],
+                    cli: new ClienteAPI("http://localhost:3000/items")
+                }
+            },
+            mounted: async function() { 
+                this.items = await this.cli.getItems()
+            },
+            methods: {
+                toggleItem(id) {
+                    var elem = this.items.find(function(elem) {
+                        return elem.id == id
+                    })
+                    if (elem) {
+                      var res = this.cli.toggleItem(elem.id, !elem.comprado)                        
+                      if (res) {
+                        elem.comprado = !elem.comprado
+                      }
+                    }
+                }
+            },
+            template: `
+            <h1>Lista de la compra</h1>
+            <nuevo-item/>
+            <ul>
+               <item v-for="i in items"
+                     :id="i.id"   
+                     :nombre="i.nombre"
+                     :comprado="i.comprado"
+                     @toggle="toggleItem"/>
+            </ul>    
+            `
+        })
+
+        app.component("item",{
+            props:["id", "nombre", "comprado"],
+            template: `
+              <li @click="$emit('toggle',id)"
+                  :id="id" 
+                  :class="comprado?'tachado':''">
+                  {{nombre}}
+                  
+              </li>
+            `
+        })
+
+
+
+        app.component('holamundo',{
+            props: ["nombre"],
+            template: "<h1>Hola mundo, soy {{nombre}}!</h1>"
+        })
+        app.component('contador',{
+            props: ["inicial"],
+            data: function(){
+                return {
+                    valor: parseInt(this.inicial)
+                }
+            },
+            methods: {
+                incrementar() {
+                    this.valor += 1
+                }
+            },
+            template: `
+            <h1>{{valor}}</h1>
+            <button @click="incrementar">Incrementar</button>
+            `
+        })
+        app.mount("#app")
+
+
+    </script>
+</body>
+</html>
