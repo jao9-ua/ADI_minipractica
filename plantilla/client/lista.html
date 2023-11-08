@@ -1,87 +1,113 @@
 <html>
+
 <head>
-    <meta charset="utf-8"/>
-    <link rel="stylesheet" href="lista.css"/>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="lista.css" />
 </head>
+
 <body>
     <div id="app">
-       <lista/> 
+        <lista />
     </div>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script type="module">
-        import {ClienteAPI} from './servicios/ClienteAPI.js'
-        
+        import { ClienteAPI } from './servicios/ClienteAPI.js'
+
         const app = Vue.createApp()
 
-        app.component('nuevo-item',{
-            data: function() {
+        app.component('nuevo-item', {
+            data: function () {
                 return {
-                   nombre: "" 
+                    nuevoItem: ""
+                }
+            },
+            emits: ['agregar'],
+            methods: {
+                agregar() {
+                    this.$emit('agregar', this.nuevoItem);
+                    this.nuevoItem = ""; // Limpiar el campo de entrada
                 }
             },
             template: `
-            <input type="text" v-model="nombre">
-            <button @click="$emit()">Añadir</button>
+            <input type="text" v-model="nuevoItem">
+            <button @click="agregar">Añadir</button>
             `
         })
 
-        app.component("lista",{
-            data: function() {
+        app.component("lista", {
+            data: function () {
                 return {
                     items: [],
                     cli: new ClienteAPI("http://localhost:3000/items")
                 }
             },
-            mounted: async function() { 
+            mounted: async function () {
                 this.items = await this.cli.getItems()
             },
             methods: {
                 toggleItem(id) {
-                    var elem = this.items.find(function(elem) {
+                    var elem = this.items.find(function (elem) {
                         return elem.id == id
                     })
                     if (elem) {
-                      var res = this.cli.toggleItem(elem.id, !elem.comprado)                        
-                      if (res) {
-                        elem.comprado = !elem.comprado
-                      }
+                        var res = this.cli.toggleItem(elem.id, !elem.comprado)
+                        if (res) {
+                            elem.comprado = !elem.comprado
+                        }
+                    }
+                },
+                async agregarItem(nombre) {
+                    try {
+                        const nuevoItem = await this.cli.addItem(nombre);
+                        this.items.push(nuevoItem);
+                    } catch (error) {
+                        console.error("Error al agregar elemento:", error);
+                    }
+
+                },
+                async eliminarItem(id) {
+                    var res = await this.cli.delItem(id);
+                    if (res) {
+                        this.items = this.items.filter(item => item.id !== id);
                     }
                 }
             },
             template: `
             <h1>Lista de la compra</h1>
-            <nuevo-item/>
+            <nuevo-item 
+                @agregar="agregarItem"/>
             <ul>
                <item v-for="i in items"
                      :id="i.id"   
                      :nombre="i.nombre"
                      :comprado="i.comprado"
-                     @toggle="toggleItem"/>
+                     @toggle="toggleItem"
+                     @eliminar="eliminarItem"/>
             </ul>    
             `
         })
 
-        app.component("item",{
-            props:["id", "nombre", "comprado"],
+        app.component("item", {
+            props: ["id", "nombre", "comprado"],
             template: `
               <li @click="$emit('toggle',id)"
                   :id="id" 
                   :class="comprado?'tachado':''">
                   {{nombre}}
-                  
+                  <button @click.stop="$emit('eliminar', id)">Eliminar</button>
               </li>
             `
         })
 
 
 
-        app.component('holamundo',{
+        app.component('holamundo', {
             props: ["nombre"],
             template: "<h1>Hola mundo, soy {{nombre}}!</h1>"
         })
-        app.component('contador',{
+        app.component('contador', {
             props: ["inicial"],
-            data: function(){
+            data: function () {
                 return {
                     valor: parseInt(this.inicial)
                 }
@@ -101,4 +127,5 @@
 
     </script>
 </body>
+
 </html>
